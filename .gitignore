@@ -5,6 +5,10 @@
 *.so
 *.dylib
 
+# Squirrel
+/squirrel
+/urls.db
+
 # Test binary, build with `go test -c`
 *.test
 

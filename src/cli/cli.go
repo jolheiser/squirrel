@@ -12,7 +12,7 @@ import (
 	log "github.com/schollz/logger"
 	"github.com/schollz/progressbar/v2"
 	"github.com/schollz/squirrel/src/get"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func init() {
@@ -27,28 +27,28 @@ func Run() (err error) {
 	app.Compiled = time.Now()
 	app.Usage = "download URLs directly into an SQLite database"
 	app.Flags = []cli.Flag{
-		cli.StringSliceFlag{Name: "headers,H", Usage: "headers to include"},
-		cli.BoolFlag{Name: "tor"},
-		cli.BoolFlag{Name: "no-clobber,nc"},
-		cli.StringFlag{Name: "list,i"},
-		cli.StringFlag{Name: "pluck,p", Usage: "file for plucking"},
-		cli.StringFlag{Name: "cookies,c"},
-		cli.BoolFlag{Name: "compressed"},
-		cli.BoolFlag{Name: "quiet,q"},
-		cli.BoolFlag{Name: "strip-js"},
-		cli.BoolFlag{Name: "strip-css"},
-		cli.IntFlag{Name: "workers,w", Value: 1},
-		cli.BoolFlag{Name: "dump", Usage: "dump database file to disk"},
-		cli.StringFlag{Name: "db", Usage: "name of SQLite database to use", Value: "urls.db"},
-		cli.BoolFlag{Name: "debug", Usage: "increase verbosity"},
+		&cli.StringSliceFlag{Name: "headers", Aliases: []string{"H"}, Usage: "headers to include"},
+		&cli.BoolFlag{Name: "tor"},
+		&cli.BoolFlag{Name: "no-clobber", Aliases: []string{"nc"}},
+		&cli.StringFlag{Name: "list", Aliases: []string{"i"}},
+		&cli.StringFlag{Name: "pluck", Aliases: []string{"p"}, Usage: "file for plucking"},
+		&cli.StringFlag{Name: "cookies", Aliases: []string{"c"}},
+		&cli.BoolFlag{Name: "compressed"},
+		&cli.BoolFlag{Name: "quiet", Aliases: []string{"q"}},
+		&cli.BoolFlag{Name: "strip-js"},
+		&cli.BoolFlag{Name: "strip-css"},
+		&cli.IntFlag{Name: "workers", Aliases: []string{"w"}, Value: 1},
+		&cli.BoolFlag{Name: "dump", Usage: "dump database file to disk"},
+		&cli.StringFlag{Name: "db", Usage: "name of SQLite database to use", Value: "urls.db"},
+		&cli.BoolFlag{Name: "debug", Usage: "increase verbosity"},
 	}
 	app.Action = func(c *cli.Context) error {
-		if c.GlobalBool("debug") {
+		if c.Bool("debug") {
 			log.SetLevel("trace")
 		} else {
 			log.SetLevel("warn")
 		}
-		if c.GlobalBool("dump") {
+		if c.Bool("dump") {
 			return dump(c)
 		}
 		return runget(c)
@@ -60,35 +60,35 @@ func Run() (err error) {
 
 func runget(c *cli.Context) (err error) {
 	w := get.Get{}
-	w.Debug = c.GlobalBool("debug")
-	w.DBName = c.GlobalString("db")
+	w.Debug = c.Bool("debug")
+	w.DBName = c.String("db")
 	if c.Args().First() != "" {
 		w.URL = c.Args().First()
-	} else if c.GlobalString("list") != "" {
-		w.FileWithList = c.GlobalString("list")
+	} else if c.String("list") != "" {
+		w.FileWithList = c.String("list")
 	} else {
 		return errors.New("need to specify URL")
 	}
-	if c.GlobalBool("debug") {
+	if c.Bool("debug") {
 		log.SetLevel("trace")
-	} else if c.GlobalBool("quiet") {
+	} else if c.Bool("quiet") {
 		log.SetLevel("error")
 	} else {
 		log.SetLevel("info")
 	}
-	w.Headers = c.GlobalStringSlice("headers")
-	w.NoClobber = c.GlobalBool("no-clobber")
-	w.UseTor = c.GlobalBool("tor")
-	w.StripCSS = c.GlobalBool("strip-css")
-	w.StripJS = c.GlobalBool("strip-js")
-	w.CompressResults = c.GlobalBool("compressed")
-	w.NumWorkers = c.GlobalInt("workers")
-	w.Cookies = c.GlobalString("cookies")
+	w.Headers = c.StringSlice("headers")
+	w.NoClobber = c.Bool("no-clobber")
+	w.UseTor = c.Bool("tor")
+	w.StripCSS = c.Bool("strip-css")
+	w.StripJS = c.Bool("strip-js")
+	w.CompressResults = c.Bool("compressed")
+	w.NumWorkers = c.Int("workers")
+	w.Cookies = c.String("cookies")
 	if w.NumWorkers < 1 {
 		return errors.New("cannot have less than 1 worker")
 	}
-	if c.GlobalString("pluck") != "" {
-		b, err := ioutil.ReadFile(c.GlobalString("pluck"))
+	if c.String("pluck") != "" {
+		b, err := ioutil.ReadFile(c.String("pluck"))
 		if err != nil {
 			return err
 		}
@@ -101,11 +101,11 @@ func runget(c *cli.Context) (err error) {
 
 func dump(c *cli.Context) (err error) {
 	start := time.Now()
-	_, err = os.Stat(c.GlobalString("db"))
+	_, err = os.Stat(c.String("db"))
 	if err != nil {
 		return
 	}
-	fs, err := fbdb.Open(c.GlobalString("db"))
+	fs, err := fbdb.Open(c.String("db"))
 	if err != nil {
 		return
 	}
@@ -114,16 +114,16 @@ func dump(c *cli.Context) (err error) {
 		return
 	}
 	var bar *progressbar.ProgressBar
-	if !c.GlobalBool("debug") {
+	if !c.Bool("debug") {
 		bar = progressbar.NewOptions(numFiles,
 			progressbar.OptionShowCount(),
 			progressbar.OptionShowIts(),
 		)
 		log.SetLevel("info")
 	}
-	log.Infof("dumping %s", c.GlobalString("db"))
+	log.Infof("dumping %s", c.String("db"))
 	for i := 0; i < numFiles; i++ {
-		if !c.GlobalBool("debug") {
+		if !c.Bool("debug") {
 			bar.Add(1)
 		}
 		var f fbdb.File
